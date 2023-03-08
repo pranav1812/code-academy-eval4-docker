@@ -1,0 +1,127 @@
+# node App
+
+# postgres server with volume eval2Data
+
+services:
+############################################################
+  authCache:
+    image: redis:alpine
+    # ports:
+    #   - 6380:6380
+    command: redis-server 
+
+  ############################################################
+  serverDb:
+    image: postgres:13-alpine
+    volumes:
+      - ../volumes/final_pg_volume:/var/lib/postgresql/data
+    ports:
+      - 5435:5432 # 5432 in the container, 5435 on the host
+    environment:
+      POSTGRES_PASSWORD: ChangeItNow
+      POSTGRES_USER: pranav_vohra
+      POSTGRES_DB: final
+  
+  ############################################################
+  serverMigration:
+    image: node:18-alpine
+    command: sh -c "cd /src && npm run migrate"
+    working_dir: /src
+    volumes:
+      - ../server:/src
+    environment:
+      NODE_ENV: docker
+      pg_username: "pranav_vohra"
+      pg_password: "ChangeItNow"
+      pg_database: "final"
+      pg_host: serverDb # name of the postgres service
+      pg_port: 5432
+    depends_on:
+      - serverDb
+
+  ############################################################
+  authDb:
+    image: postgres:13-alpine
+    volumes:
+      - ../volumes/auth_pg_volume:/var/lib/postgresql/data
+    ports:
+      - 5434:5432 # 5432 in the container, 5434 on the host
+    environment:
+      POSTGRES_PASSWORD: ChangeItNow
+      POSTGRES_USER: pranav_vohra
+      POSTGRES_DB: auth
+
+  ############################################################
+  authMigration:
+    image: node:18-alpine
+    command: sh -c "cd /src && npm run migrate"
+    working_dir: /src
+    volumes:
+      - ../auth:/src
+    environment:
+      NODE_ENV: docker
+      pg_username: pranav_vohra
+      pg_password: ChangeItNow
+      pg_database: auth
+      pg_host: authDb # name of the postgres service
+      pg_port: 5432
+    depends_on:
+      - authDb
+
+  ############################################################
+  server:
+    image: node:18-alpine
+    command: sh -c "cd /src && node --watch src/index.js"
+    working_dir: /src
+    volumes:
+      - ../server:/src 
+    ports:
+      - 8000:8000
+    environment:
+      PORT: 8000
+      NODE_ENV: docker
+      pg_username: "pranav_vohra"
+      pg_password: "ChangeItNow"
+      pg_database: "final"
+      pg_host: serverDb # name of the postgres service
+      pg_port: 5432
+      authHost: http://auth:8001 # name of the auth service
+    
+    depends_on:
+      - serverDb
+      - serverMigration
+      - auth
+  
+  ############################################################
+  auth:
+    image: node:18-alpine
+    command: sh -c "cd /src && node --watch src/index.js"
+    working_dir: /src 
+    volumes:
+      - ../auth:/src
+      # - /src/node_modules
+    ports:
+      - 8001:8001
+    environment:
+      PORT: 8001
+      NODE_ENV: docker
+      pg_username: pranav_vohra
+      pg_password: ChangeItNow
+      pg_database: auth
+      pg_host: authDb # name of the postgres service
+      pg_port: 5432
+      redis_host: authCache
+      redis_port: 6379
+      JWT_SIGNING_KEY: "secretSauce96"
+    depends_on:
+      - authDb
+      - authCache
+      - authMigration
+  
+
+# volumes:
+#   final_eval_serverDb:
+#   postgresData:
+
+
+
