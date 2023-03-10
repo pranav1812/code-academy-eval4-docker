@@ -7,8 +7,8 @@ services:
   authCache:
     image: redis:alpine
     # ports:
-    #   - 6380:6380
-    command: redis-server 
+    #   - 6380:6379
+    # command: redis-server 
 
   ############################################################
   serverDb:
@@ -71,7 +71,7 @@ services:
   ############################################################
   server:
     image: node:18-alpine
-    command: sh -c "cd /src && node --watch src/index.js"
+    command: sh -c "cd /src && npm i -g nodemon && nodemon src/index.js"
     working_dir: /src
     volumes:
       - ../server:/src 
@@ -95,7 +95,7 @@ services:
   ############################################################
   auth:
     image: node:18-alpine
-    command: sh -c "cd /src && node --watch src/index.js"
+    command: sh -c "cd /src && npm i -g nodemon &&  nodemon src/index.js"
     working_dir: /src 
     volumes:
       - ../auth:/src
